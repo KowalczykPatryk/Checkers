@@ -33,7 +33,7 @@ class Game:
         self.only_kings_type = OnlyKingsType.UNRELEVANT
         self.no_progress_counter = 0
         self.outcome: Outcome = Outcome.NOT_FINISHED
-        self.position_counts = {}
+        self.position_counts = {self.get_position_key(): 1}
 
     def _one_field_move(self, position, new_position) -> Move | None:
         if self.board.is_in_board(new_position) and self.board.is_field_free(new_position):
@@ -136,16 +136,14 @@ class Game:
             self.outcome = Outcome.DRAW
             return False
         
-        # if any([True if value >= 3 else False for value in self.position_counts.values()]):
-        #     self.outcome = Outcome.DRAW
-        #     return False
+        if any(value >= 3 for value in self.position_counts.values()):
+            self.outcome = Outcome.DRAW
+            return False
 
         only_kings = True
         n_light_kings = 0
         n_dark_kings = 0
         for position in self._all_pieces_positions(PieceColor.LIGHT) + self._all_pieces_positions(PieceColor.DARK):
-            print(position.x, position.y)
-            print("Light" if self.whose_turn == PieceColor.LIGHT else "Dark")
             if self.board.fields[position.y][position.x].piece.type == PieceType.MAN:
                 only_kings = False
                 break
@@ -197,7 +195,16 @@ class Game:
     def get_position_key(self) -> tuple:
         # hashable object has to be made from not mutable objects
         # maybe replace with Zobrist Hashing
-        return (tuple(tuple(row) for row in self.board.fields), self.whose_turn)
+        return (
+            tuple(
+                tuple(
+                    None if field.piece is None else (field.piece.color.value, field.piece.type.value)
+                    for field in row
+                )
+                for row in self.board.fields
+            ),
+            self.whose_turn.value,
+        )
 
     def generate_potential_moves(self) -> list[Move] | None:
         """
