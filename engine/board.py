@@ -10,19 +10,15 @@ class Board:
         self.fields: list[list[Field]] = []
         self._prepare_board()
     def _prepare_board(self) -> None:
-        row0 = []
-        row1 = []
-        for col in range(self.size):
-            if col % 2 == 0:
-                row0.append(Field(FieldColor.DARK))
-            else:
-                row1.append(Field(FieldColor.LIGHT))
-
         for row in range(self.size):
-            if row % 2 == 0:
-                self.fields.append(row0)
-            else:
-                self.fields.append(row1)
+            current_row = []
+            for col in range(self.size):
+                if (row + col) % 2 == 0:
+                    color = FieldColor.DARK
+                else:
+                    color = FieldColor.LIGHT
+                current_row.append(Field(color))
+            self.fields.append(current_row)
 
     def place_pieces(self, n_rows: int, light_bottom: bool = True) -> None:
         # bottom rows
@@ -53,3 +49,22 @@ class Board:
 
     def change_field_piece(self, position: Position, piece: Piece | None = None) -> None:
         self.fields[position.y][position.x].piece = piece
+
+    def print(self) -> None:
+        for row in reversed(self.fields):
+            print("|", end="")
+            for field in row:
+                if not field.piece:
+                    print("_|", end="")
+                else:
+                    if field.piece.color == PieceColor.LIGHT:
+                        if field.piece.type == PieceType.KING:
+                            print("L|", end="")
+                        else:
+                            print("l|", end="")
+                    else:
+                        if field.piece.type == PieceType.KING:
+                            print("D|", end="")
+                        else:
+                            print("d|", end="")
+            print("")
