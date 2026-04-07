@@ -3,6 +3,7 @@ from engine.board import Board
 from engine.move import Move
 from engine.position import Position
 from engine.piece import PieceColor, PieceType
+from engine.zobrist import Zobrist
 from enum import Enum
 
 class Outcome(Enum):
@@ -33,6 +34,8 @@ class Game:
         self.only_kings_type = OnlyKingsType.UNRELEVANT
         self.no_progress_counter = 0
         self.outcome: Outcome = Outcome.NOT_FINISHED
+        self.zobrist: Zobrist = Zobrist()
+        self.zobrist.init_hash(self.board)
         self.position_counts = {self.get_position_key(): 1}
 
     def _one_field_move(self, position, new_position) -> Move | None:
@@ -192,19 +195,8 @@ class Game:
         """
         return self.outcome
             
-    def get_position_key(self) -> tuple:
-        # hashable object has to be made from not mutable objects
-        # maybe replace with Zobrist Hashing
-        return (
-            tuple(
-                tuple(
-                    None if field.piece is None else (field.piece.color.value, field.piece.type.value)
-                    for field in row
-                )
-                for row in self.board.fields
-            ),
-            self.whose_turn.value,
-        )
+    def get_position_key(self) -> int:
+        return self.zobrist.hash
 
     def generate_potential_moves(self) -> list[Move] | None:
         """
@@ -354,14 +346,25 @@ class Game:
             x, y = start.x + dx, start.y + dy
 
             while (x,y) != (end.x, end.y):
-                self.board.change_field_piece(Position(x,y))
+                position = Position(x, y)
+                piece = self.board.get_field_piece(position)
+                if piece is not None and piece.color != self.whose_turn:
+                    self.board.change_field_piece(position)
+                    self.zobrist.update_hash(position, piece.color, piece.type)
                 x += dx
                 y += dy
         # move piece on the board
+        piece = self.board.get_field_piece(start_position)
         self.board.change_field_piece(start_position)
+        self.zobrist.update_hash(start_position, piece.color, piece.type)
         self.board.change_field_piece(end_position, piece)
+        piece = self.board.get_field_piece(end_position)
+        self.zobrist.update_hash(end_position, piece.color, piece.type)
         self.moves_history.append(move)
         self.whose_turn = PieceColor.LIGHT if self.whose_turn == PieceColor.DARK else PieceColor.DARK
+
+        # update zobrist hash - whose turn part
+        self.zobrist.apply_side_hash()
 
         # same position (board arrangement + whose turn) counter increment
         key = self.get_position_key()
