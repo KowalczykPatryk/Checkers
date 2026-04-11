@@ -7,8 +7,8 @@ from engine.zobrist import Zobrist
 from enum import Enum
 
 class Outcome(Enum):
-    DARK = 0
-    LIGHT = 1
+    DARK = PieceColor.DARK
+    LIGHT = PieceColor.LIGHT
     DRAW = 2
     NOT_FINISHED = 3
 
@@ -116,6 +116,35 @@ class Game:
             if not there_is_next and not current_move.empty():
                 potential_moves.append(current_move)
 
+    def evaluate(self, global_maximizer: PieceColor) -> float:
+        if not self.is_in_progress():
+            if global_maximizer == PieceColor.LIGHT:
+                if self.final_outcome() == Outcome.LIGHT:
+                    return 1000
+                if self.final_outcome() == Outcome.DARK:
+                    return -1000
+                return -0.2
+            if self.final_outcome() == Outcome.DARK:
+                return 1000
+            if self.final_outcome() == Outcome.LIGHT:
+                return -1000
+            return -0.2
+        
+        score = 0
+        for pos in self._all_pieces_positions(global_maximizer):
+            if self.board.fields[pos.y][pos.x].piece.type == PieceType.MAN:
+                score += 3
+            else:
+                score += 5
+        minimizer = (PieceColor.DARK if global_maximizer == PieceColor.LIGHT else PieceColor.LIGHT)
+
+        for pos in self._all_pieces_positions(minimizer):
+            if self.board.fields[pos.y][pos.x].piece.type == PieceType.MAN:
+                score += -3
+            else:
+                score += -5
+        return score
+
     def _all_pieces_positions(self, color: PieceColor | None = None) -> list[Position]:
         if not color:
             color = self.whose_turn
@@ -198,7 +227,7 @@ class Game:
     def get_position_key(self) -> int:
         return self.zobrist.hash
 
-    def generate_potential_moves(self) -> list[Move] | None:
+    def generate_potential_moves(self) -> list[Move]:
         """
         Returns all moves that maximize capture rate for all pieces of the current player.
         If there is no possible moves None is returned.
@@ -210,11 +239,11 @@ class Game:
             if moves:
                 potential_moves.extend(moves)
         if len(potential_moves) == 0:
-            return None
+            return []
         return self._remove_not_maximum_moves(potential_moves)
 
 
-    def _generate_potential_moves_for_position(self, position: Position) -> list[Move] | None:
+    def _generate_potential_moves_for_position(self, position: Position) -> list[Move]:
         """
         Moves that are returned are only the ones that maximize the number of captures because it is stated in the rules of checkers.
         There is also need to generate potential moves for each piece and then keep only the one that maximize the number of captures.
@@ -222,7 +251,7 @@ class Game:
         If there are no possible moves from passed position then empty list is returned.
         """
         if self.whose_turn != self.board.fields[position.y][position.x].piece.color:
-            return None
+            return []
         potential_moves: list[Move] = []
         if self.board.fields[position.y][position.x].piece.type == PieceType.MAN:
             if self.whose_turn == PieceColor.LIGHT:
