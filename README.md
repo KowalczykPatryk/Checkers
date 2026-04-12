@@ -35,3 +35,19 @@ By using recursion and depth decrement tree of possible game states in explored.
 Pruning condition is: if at any point beta <= alpha, we can prune the remaining branches.  
 Alpha and beta are passed from parent to children in the tree. And in this tree MAX and MIN take turns when another recursion call. So for example MIN parent
 found so far pretty negative beta value that were returned from other children but these children were maximizing so if maximizing child found so far sth bigger than minimazing parent passed down in beta variable then maximizing child can stop further searching. It is because maximizing child cannot take sth less than he found already and what he found is already bigger than other maximizing child so it won't be selected by minimizing parent.
+
+### Monte Carlo Tree Search:
+Can be divided into 4 stages:
+- Selection - traverses already build branches using UCB (Upper Confidence Bounds) selection rule
+- Expansion - when the selection phase reaches a leaf node that isn't terminal, the algorithm expands the tree by adding one or more child nodes representing possible actions from that state
+- Simulation - from the newly added node, a random playout is performed until reaching a terminal state. During this phase, moves are chosen randomly
+- Backpropagation - the result of the simulation is propagated back up the tree to the root, updating statistics (visit counts and win rates) for all nodes visited during the selection phase
+
+This stages are repeated iteratively until a computational limit is reached.
+
+Upper Bound Confidence:  
+For each action, calculate:
+
+UCB = average reward + uncertainty term
+
+The uncertainty term is higher when you haven’t tried that option much so there’s more room for surprise.
