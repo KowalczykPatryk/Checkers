@@ -230,7 +230,7 @@ class Game:
     def generate_potential_moves(self) -> list[Move]:
         """
         Returns all moves that maximize capture rate for all pieces of the current player.
-        If there is no possible moves None is returned.
+        If there is no possible moves [] is returned.
         """
         potential_moves: list[Move] = []
 

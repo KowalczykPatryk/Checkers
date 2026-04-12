@@ -1,10 +1,10 @@
 
 import time
-import random
 from engine.game import Game
 from engine.piece import PieceColor
 from engine.game import Outcome
 from ai.minimax import minimax
+from ai.mcts import mcts_search
 
 
 if __name__ == "__main__":
@@ -21,9 +21,9 @@ if __name__ == "__main__":
             print("Evaluation:", game.evaluate(PieceColor.LIGHT))
             game.make_move(move[1])
         else:
-            possible_moves = game.generate_potential_moves()
+            move = mcts_search(game, PieceColor.DARK)
             print("Dark moved")
-            game.make_move(random.choice(possible_moves))
+            game.make_move(move)
         game.board.print()
         time.sleep(1)
 
