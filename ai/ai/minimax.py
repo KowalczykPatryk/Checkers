@@ -1,11 +1,14 @@
 
 from copy import deepcopy
-from engine.game import Game
-from engine.move import Move
-from engine.piece import PieceColor
+import time
+from ai.engine.game import Game
+from ai.engine.move import Move
+from ai.engine.piece import PieceColor
 
-def minimax(game_state: Game, depth: int, maximizing: bool, global_maximizer: PieceColor, alpha=float('-inf'), beta=float('inf')) -> tuple[int, Move | None]:
+def minimax(game_state: Game, maximizing: bool, global_maximizer: PieceColor, start_time: float, max_time: float, alpha=float('-inf'), beta=float('inf'), depth: int|None = None) -> tuple[float, Move | None]:
     """
+    start_time - time passed to the first minimax node as a reference to the global start time
+    max_time - max time per move in seconds 
     global_maximizer - passed deep into the recursion to pass the information for whom positive score has to be calculated and for whom negative.
     Alpha is the best value that the maximizer currently can guarantee at that level or above.
     Beta is the best value (most negative) that the minimizer currently can guarantee at that level or below.
@@ -16,7 +19,7 @@ def minimax(game_state: Game, depth: int, maximizing: bool, global_maximizer: Pi
     be selected by minimizing parent.
     """
 
-    if (depth==0) or (not game_state.is_in_progress()):
+    if (depth is not None and depth==0) or (not game_state.is_in_progress()) or (time.time() - start_time >= max_time):
         return game_state.evaluate(global_maximizer), None
 
     if maximizing:
@@ -33,7 +36,10 @@ def minimax(game_state: Game, depth: int, maximizing: bool, global_maximizer: Pi
             game = deepcopy(game_state)
             game.make_move(move)
 
-            tmp = minimax(game, depth-1, False, global_maximizer, alpha, beta)[0]
+            if depth is not None:
+                tmp = minimax(game, False, global_maximizer, start_time, max_time, alpha, beta, depth-1)[0]
+            else:
+                tmp = minimax(game, False, global_maximizer, start_time, max_time, alpha, beta)[0]
             if tmp > value:
                 value = tmp
                 best_movement = move
@@ -42,8 +48,6 @@ def minimax(game_state: Game, depth: int, maximizing: bool, global_maximizer: Pi
             alpha = max(alpha, value)
             if alpha >= beta:
                 break
-            
-
 
     else:
         value = float('inf')
@@ -59,7 +63,10 @@ def minimax(game_state: Game, depth: int, maximizing: bool, global_maximizer: Pi
             game = deepcopy(game_state)
             game.make_move(move)
 
-            tmp = minimax(game, depth-1, True, global_maximizer, alpha, beta)[0]
+            if depth is not None:
+                tmp = minimax(game, True, global_maximizer, start_time, max_time, alpha, beta, depth-1)[0]
+            else:
+                tmp = minimax(game, True, global_maximizer, start_time, max_time, alpha, beta)[0]
             if tmp < value:
                 value = tmp
                 best_movement = move

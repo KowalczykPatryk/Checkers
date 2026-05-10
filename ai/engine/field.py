@@ -1,5 +1,5 @@
 from enum import Enum
-from engine.piece import Piece
+from ai.engine.piece import Piece
 
 class FieldColor(Enum):
     DARK = 0

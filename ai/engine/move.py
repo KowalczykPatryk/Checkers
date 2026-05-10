@@ -1,12 +1,15 @@
 
-from engine.position import Position
+from ai.engine.position import Position
 
 class Move:
     def __init__(self) -> None:
         self.positions: list[Position] = []
-        # move should also store positions of captured pieces with types of captured pieces and also whether after move there was promotion
-        # previous state?
 
+    def __eq__(self, other) -> bool:
+        for p1, p2 in zip(self.positions, other.positions):
+            if p1 != p2:
+                return False
+        return True
 
     def add_position(self, position: Position) -> None:
         self.positions.append(position)

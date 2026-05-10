@@ -1,8 +1,8 @@
 
 import random
-from engine.piece import PieceColor, PieceType
-from engine.board import Board
-from engine.position import Position
+from ai.engine.piece import PieceColor, PieceType
+from ai.engine.board import Board
+from ai.engine.position import Position
 
 class Zobrist:
     def __init__(self, size: tuple[int, int, int] = (10, 10, 4), min_v: int = 0, max_v: int = pow(2, 64)) -> None:

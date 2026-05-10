@@ -5,16 +5,17 @@ from __future__ import annotations
 
 import math
 import random
+import time
 from copy import deepcopy
-from engine.game import Game
-from engine.move import Move
-from engine.game import Outcome
-from engine.piece import PieceColor
+from ai.engine.game import Game
+from ai.engine.move import Move
+from ai.engine.game import Outcome
+from ai.engine.piece import PieceColor
 
 
 class MCTSNode:
     """
-    Node in the tree
+    Node in the MCTS (Monte Carlo Tree Search).
     """
     def __init__(self, game_state: Game, player: PieceColor, parent: MCTSNode | None = None, action: Move | None = None) -> None:
         self.game_state: Game = deepcopy(game_state)
@@ -28,19 +29,22 @@ class MCTSNode:
 
     def is_terminal(self) -> bool:
         """
-        Check if node is terminal
+        Check if node is terminal.
         """
         return not self.game_state.is_in_progress()
 
     def is_fully_expanded(self) -> bool:
         """
-        Check if all actions (possible moves) are explored
+        Check if all actions (possible moves) that can be taken from this node are explored.
         """
         return len(self.untried_actions) == 0
 
     def expand(self) -> MCTSNode:
         """
-        Expand node
+        Makes expansion step in the MCTS process.
+        It means that new child will be added to this node
+        and it is returned so that simulation step can be
+        performed on it.
         """
         action: Move = self.untried_actions.pop()
         new_game_state = deepcopy(self.game_state)
@@ -53,6 +57,7 @@ class MCTSNode:
 
     def best_child(self, c: float = 1.4) -> MCTSNode:
         """
+        Makes selection step in the MCTS process.
         Select best child using UCB (Upper Confidence Bounds)
         """
         for child in self.children:
@@ -68,24 +73,26 @@ class MCTSNode:
 
     def rollout(self) -> Outcome:
         """
-        Plays random moves until the game finishes
+        Makes simulation step in the MCTS process.
+        Plays random moves until the game finishes.
+        Can be extended to use policy network that will decide
+        which move to explore because it looks promising to the
+        pretrained neural network.
         """
         state = deepcopy(self.game_state)
 
-        while True:
-            outcome: Outcome = state.final_outcome()
-            if outcome != Outcome.NOT_FINISHED:
-                return outcome
+        while state.is_in_progress():
 
             actions = state.generate_potential_moves()
-            if not actions:
-                return state.final_outcome()
 
             move = random.choice(actions)
             state.make_move(move)
 
+        return state.final_outcome()
+
     def backpropagate(self, outcome: Outcome) -> None:
         """
+        Makes backproapgation step in the MCTS process.
         Updates the wins and visits from simulation results.
         """
         self.visits += 1
@@ -101,17 +108,34 @@ class MCTSNode:
             self.parent.backpropagate(outcome)
 
 
-def mcts_search(game_state: Game, player: PieceColor, iterations: int = 1000) -> Move:
+def mcts_search(game_state: Game, player: PieceColor, max_time: float) -> Move:
     """
     Runs the complete MCTS process:
     - Selection
     - Expansion
     - Simulation
     - Backpropagation
+    In every iteration we start from the root node.
+    If current node has all possible children (is expanded) then best child is selected using UCB.
+    If current node can have another child (there is action that can be taken) then this
+    new child is added to this node and new child is simulated.
+    Important is that during backpropagation expanded nodes have their stats updated.
+    UCB during selection takes into account wins and visits. But at the final decision at
+    the root only child with the most visits is returned as best because if it has the most visits
+    it means that it was generally most frequently selected as the best child by UCB.
+
+    Parameters:
+        game_state: the state from which we want to start search.
+        player: the player piece color for whom we want to calculate the best action (move).
+        iterations: the number of times we want to traverse full MCTS process described above.
     """
+    possible_moves = game_state.generate_potential_moves()
+    if len(possible_moves) == 1:
+        return possible_moves[0]
     root = MCTSNode(game_state, player)
 
-    for _ in range(iterations):
+    start_time = time.time()
+    while True:
         node = root
 
         while not node.is_terminal() and node.is_fully_expanded():
@@ -122,6 +146,11 @@ def mcts_search(game_state: Game, player: PieceColor, iterations: int = 1000) ->
 
         outcome = node.rollout()
         node.backpropagate(outcome)
+        if time.time() - start_time >= max_time:
+            break
+
+    if not root.children:
+        return random.choice(possible_moves)
 
 
     best = max(root.children, key=lambda c: c.visits)

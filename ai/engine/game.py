@@ -1,18 +1,36 @@
+"""
+Contains Game class that represents game engine.
+"""
 import copy
-from engine.board import Board
-from engine.move import Move
-from engine.position import Position
-from engine.piece import PieceColor, PieceType
-from engine.zobrist import Zobrist
+from itertools import product
 from enum import Enum
+from ai.engine.board import Board
+from ai.engine.move import Move
+from ai.engine.position import Position
+from ai.engine.piece import PieceColor, PieceType
+from ai.engine.zobrist import Zobrist
+from ai.engine.field import FieldColor
+
 
 class Outcome(Enum):
+    """
+    It is returned from the final_outcome() method.
+    """
     DARK = PieceColor.DARK
     LIGHT = PieceColor.LIGHT
     DRAW = 2
     NOT_FINISHED = 3
 
 class OnlyKingsType(Enum):
+    """
+    In checkers the number of moves when there is only kings vs king is limited.
+    The limit varies depending on number of kings.
+    This enum states what type of ending it is:
+    UNRELEVANT - it is not kings vs king position
+    T1VS1 - 1 king vs 1 king
+    T2VS1 - 2 kings vs 1 king
+    TNVS1 - N kings vs 1 king
+    """
     UNRELEVANT = 0
     T1VS1 = 1
     T2VS1 = 2
@@ -38,7 +56,7 @@ class Game:
         self.zobrist.init_hash(self.board)
         self.position_counts = {self.get_position_key(): 1}
 
-    def _one_field_move(self, position, new_position) -> Move | None:
+    def _one_field_move(self, position: Position, new_position: Position) -> Move | None:
         if self.board.is_in_board(new_position) and self.board.is_field_free(new_position):
             move = Move()
             move.add_position(position)
@@ -223,6 +241,13 @@ class Game:
         All this is managed in the is_in_progress() method.
         """
         return self.outcome
+    
+    def final_outcome_scalar(self) -> int:
+        if self.outcome == Outcome.LIGHT:
+            return 1
+        if self.outcome == Outcome.DARK:
+            return -1
+        return 0
             
     def get_position_key(self) -> int:
         return self.zobrist.hash
@@ -398,3 +423,92 @@ class Game:
         # same position (board arrangement + whose turn) counter increment
         key = self.get_position_key()
         self.position_counts[key] = self.position_counts.get(key, 0) + 1
+
+    def get_state_list(self) -> list[list[list[int]]]:
+        """
+        For each position on the board the list is calculated where:
+            Values are 0 or 1:
+            - whose turn
+            - LIGHT MAN
+            - LIGHT KING
+            - DARK MAN
+            - DARK KING
+        It is used as the input to the policy and value network.
+        (Channel, Height, Width)
+        """
+        channels = [
+            [[0 for _ in range(self.board.size)] for _ in range(self.board.size)]
+            for _ in range(5)
+        ]
+
+        whose_turn_value = 0 if self.whose_turn == PieceColor.DARK else 1
+        for y in range(self.board.size):
+            for x in range(self.board.size):
+                channels[0][y][x] = whose_turn_value
+
+        # filling piece channels
+        for y in range(self.board.size):
+            for x in range(self.board.size):
+                field = self.board.fields[y][x]
+                if field.piece is not None:
+                    if field.piece.color == PieceColor.LIGHT and field.piece.type == PieceType.MAN:
+                        channels[1][y][x] = 1
+                    elif field.piece.color == PieceColor.LIGHT and field.piece.type == PieceType.KING:
+                        channels[2][y][x] = 1
+                    elif field.piece.color == PieceColor.DARK and field.piece.type == PieceType.MAN:
+                        channels[3][y][x] = 1
+                    elif field.piece.color == PieceColor.DARK and field.piece.type == PieceType.KING:
+                        channels[4][y][x] = 1
+
+        return channels
+
+    def possible_moves_space(self) -> list[tuple[Position, Position]]:
+        """
+        Generates all possible tuples that have starting position on 0 index
+        and ending position on 1 index.
+        The order in which this tuples appear in the list is important
+        because dense network will output probability vector that will be mapped
+        to this list.
+        For 10x10 board there is 50x50 = 2500 such tuples, because only black squares.
+        """
+        dark_positions: list[Position] = []
+        for y, row in enumerate(self.board.fields):
+            for x, field in enumerate(row):
+                if field.color == FieldColor.DARK:
+                    dark_positions.append(Position(x,y))
+
+        moves_space = list(product(dark_positions, repeat=2))
+        return moves_space
+
+    def possible_moves_mask(self) -> list[int]:
+        """
+        Generates mask of 0s and 1s.
+        1 if (start position, end position) tuple is allowed in the current state by the engine.
+        0 otherwise.
+        """
+        mask = []
+        allowed_start_end_pos = list(map(lambda move: tuple([move.positions[0], move.positions[-1]]), self.generate_potential_moves()))
+        for start_end_pos in self.possible_moves_space():
+            if start_end_pos in allowed_start_end_pos:
+                mask.append(1)
+            else:
+                mask.append(0)
+        return mask
+
+    def moves_from(self, start: Position, end: Position) -> list[Move]:
+        """
+        Return moves that are currently allowed and match start, end position. 
+        """
+        pot_moves = self.generate_potential_moves()
+        allowed_start_end_pos = list(map(lambda move: tuple([move.positions[0], move.positions[-1]]), pot_moves))
+        moves = []
+        for idx, start_end in enumerate(allowed_start_end_pos):
+            if tuple([start, end]) == start_end:
+                moves.append(pot_moves[idx])
+
+        return moves
+    
+    def scalar_whose_turn(self) -> int:
+        if self.whose_turn == PieceColor.LIGHT:
+            return 1
+        return -1

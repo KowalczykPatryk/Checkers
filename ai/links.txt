@@ -1,0 +1,71 @@
+RL:
+https://www.baeldung.com/cs/reinforcement-learning-neural-network
+https://codesignal.com/learn/courses/game-on-integrating-rl-agents-with-environments/lessons/visualizing-training-statistics-in-reinforcement-learning
+
+Deep Q-Learning:
+https://medium.com/@samina.amin/deep-q-learning-dqn-71c109586bae
+
+Delayed Rewards:
+https://milvus.io/ai-quick-reference/how-does-reinforcement-learning-deal-with-delayed-rewards
+https://medium.com/data-science/temporal-difference-learning-and-the-importance-of-exploration-an-illustrated-guide-5f9c3371413a
+https://www.geeksforgeeks.org/machine-learning/actor-critic-algorithm-in-reinforcement-learning/
+
+Loss:
+https://medium.com/@ding.zhongqiang/loss-function-and-activation-function-in-reinforcement-learning-4c18ef574ae4
+https://datascience.stackexchange.com/questions/63305/alphago-zero-loss-function
+
+Pytorch:
+https://docs.pytorch.org/tutorials/beginner/understanding_leaf_vs_nonleaf_tutorial.html
+
+Padding:
+https://www.geeksforgeeks.org/machine-learning/cnn-introduction-to-padding/
+
+Policy Networks:
+https://nandakishorej8.medium.com/part-1-policy-based-reinforcement-learning-a-detailed-study-1d4e9b8b5239
+https://nandakishorej8.medium.com/part-2-policy-based-reinforcement-learning-openais-cartpole-with-reinforce-algorithm-18de8cb5efa4
+https://towardsdatascience.com/part-1-building-a-deep-q-network-to-play-gridworld-deepminds-deep-q-networks-78842007c631/
+https://suragnair.github.io/posts/alphazero.html
+https://www.nature.com/articles/nature24270.pdf
+
+Alpha Beta pruning:
+https://www.geeksforgeeks.org/dsa/minimax-algorithm-in-game-theory-set-4-alpha-beta-pruning/
+https://www.youtube.com/watch?v=l-hh51ncgDI&t=395s
+
+Recursion:
+https://www.geeksforgeeks.org/python/python-handling-recursion-limit/
+
+https://github.com/lhartikk/simple-chess-ai
+
+Monte Carlo Tree Search:
+https://www.geeksforgeeks.org/machine-learning/monte-carlo-tree-search-mcts-in-machine-learning/
+
+Checkers:
+https://en.wikipedia.org/wiki/Checkers
+https://en.wikipedia.org/wiki/International_draughts
+https://medium.com/analytics-vidhya/checkers-python-eff2786b985b
+
+Zobrist's Hashing:
+https://www.geeksforgeeks.org/dsa/minimax-algorithm-in-game-theory-set-5-zobrist-hashing/
+
+MiniMax algorithm:
+https://www.freecodecamp.org/news/simple-chess-ai-step-by-step-1d55a9266977/
+https://en.wikipedia.org/wiki/Minimax
+https://www.geeksforgeeks.org/dsa/minimax-algorithm-in-game-theory-set-1-introduction/
+https://papers-100-lines.medium.com/the-minimax-algorithm-and-alpha-beta-pruning-tutorial-in-30-lines-of-python-code-e4a3d97fa144
+
+AlphaGo:
+https://www.nature.com/articles/nature16961
+https://jonathan-hui.medium.com/alphago-how-it-works-technically-26ddcc085319
+https://kargarisaac.medium.com/alphago-mastering-the-game-of-go-with-deep-neural-networks-and-tree-search-92fdb0e7b9cd
+https://medium.com/@antoine.louis/mastering-the-game-of-go-with-deep-neural-networks-and-tree-search-3869f85bf8a3
+https://www.youtube.com/watch?v=Z1BELqFQZVM
+
+AlphaGo Zero:
+https://www.nature.com/articles/nature24270
+https://medium.com/aiguys/alphago-zero-mastering-the-game-of-go-without-human-knowledge-89652638b898
+https://medium.com/@TechInsight/mastering-the-game-of-go-without-human-knowledge-cb148778f24
+
+AlphaZero:
+https://arxiv.org/pdf/1712.01815
+https://medium.com/@uhanho/alphazero-mastering-chess-and-shogi-by-self-play-with-a-general-rl-eb822152cc56
+https://nikcheerla.github.io/deeplearningschool/2018/01/01/AlphaZero-Explained/
