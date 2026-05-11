@@ -86,23 +86,59 @@ After the game has ended Policy Network is updated using recorded information. V
 
 ### Policy Network:
 
-#### 0-30 EPOCH:
+#### 0-30 EPOCHS:
 
 ![Policy Network Training Graph](ai/plots/1.0/policy_average_loss0-30.png)
 
-#### 30-50 EPOCH:
+#### 30-50 EPOCHS:
 
 ![Policy Network Training Graph](ai/plots/1.0/policy_average_loss30-50.png)
 
 ### Value Network:
 
-#### 0-30 EPOCH:
+#### 0-30 EPOCHS:
 
 ![Value Network Training Graph](ai/plots/1.0/value_average_loss0-30.png)
 
-#### 30-50 EPOCH:
+#### 30-50 EPOCHS:
 
 ![Value Network Training Graph](ai/plots/1.0/value_average_loss30-50.png)
+
+
+## Monte Carlo Tree Search with two neural networks 2.0:
+
+Works similarly to AlphaZero-style MCTS:
+
+ - policy network guides tree exploration using PUCT and prior probabilities for moves
+ - value network evaluates positions directly so there is no random rollout simulation to the end of the game
+ - all legal children of expanded node are created at once and assigned prior probabilities from the policy network
+ - node selection balances:
+exploitation (average estimated value of the node)
+exploration (policy prior and visit counts)
+ - during self-play Dirichlet noise is added to the root node probabilities to improve opening exploration
+ - move selection during training uses temperature parameter τ to control exploration randomness
+
+## Training process of Value Network and Policy Network 2.0:
+
+MCTS plays games against itself using policy-guided tree search and value evaluation.
+
+## Training Graphs Version 2.0 Models:
+
+### Policy Network:
+
+#### 0-100 EPOCHS:
+
+![Policy Network Training Graph](ai/plots/2.0/policy_average_loss0-100.png)
+
+### Value Network:
+
+#### 0-100 EPOCH:
+
+![Value Network Training Graph](ai/plots/2.0/value_average_loss0-100.png)
+
+#### Win Rate Against Classic MCTS Given Same Amount of Time To Move
+
+![Win Rate Graph](ai/plots/2.0/win_rate0-100.png)
 
 ## Pre-trained models:
 

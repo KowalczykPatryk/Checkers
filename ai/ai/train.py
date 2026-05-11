@@ -273,22 +273,22 @@ if __name__ == "__main__":
         VALUE_PATH.mkdir(parents=True, exist_ok=True)
         VALUE_MODEL_NAME = "ValueNetwork.pt"
 
-        # uncomment when continue learning pre-trained models
-        # # retrieving policy network
-        # POLICY_MODEL_URL = ""
-        # if not (POLICY_PATH / POLICY_MODEL_NAME).exists():
-        #     download_model(POLICY_MODEL_URL, str(POLICY_PATH / POLICY_MODEL_NAME))
-        # checkpoint = torch.load(POLICY_PATH / POLICY_MODEL_NAME)
-        # policy_model.load_state_dict(checkpoint["model"])
-        # policy_optimizer.load_state_dict(checkpoint["optimizer"])
+        #uncomment when continue learning pre-trained models
+        # retrieving policy network
+        POLICY_MODEL_URL = ""
+        if not (POLICY_PATH / POLICY_MODEL_NAME).exists():
+            download_model(POLICY_MODEL_URL, str(POLICY_PATH / POLICY_MODEL_NAME))
+        checkpoint = torch.load(POLICY_PATH / POLICY_MODEL_NAME)
+        policy_model.load_state_dict(checkpoint["model"])
+        policy_optimizer.load_state_dict(checkpoint["optimizer"])
 
-        # # retrieving value network
-        # VALUE_MODEL_URL = ""
-        # if not (VALUE_PATH / VALUE_MODEL_NAME).exists():
-        #     download_model(VALUE_MODEL_URL, str(VALUE_PATH / VALUE_MODEL_NAME))
-        # checkpoint = torch.load(VALUE_PATH / VALUE_MODEL_NAME)
-        # value_model.load_state_dict(checkpoint["model"])
-        # value_optimizer.load_state_dict(checkpoint["optimizer"])
+        # retrieving value network
+        VALUE_MODEL_URL = ""
+        if not (VALUE_PATH / VALUE_MODEL_NAME).exists():
+            download_model(VALUE_MODEL_URL, str(VALUE_PATH / VALUE_MODEL_NAME))
+        checkpoint = torch.load(VALUE_PATH / VALUE_MODEL_NAME)
+        value_model.load_state_dict(checkpoint["model"])
+        value_optimizer.load_state_dict(checkpoint["optimizer"])
 
         try:
             for epoch in tqdm(range(N_EPOCHS), desc="Training"):
@@ -384,7 +384,15 @@ if __name__ == "__main__":
                 total_loss = 0.0
                 value_loss_stats = []
                 policy_loss_stats = []
-                for (state, pi_target) in history:
+                for i, (state, pi_target) in enumerate(history):
+                    # # early-game positions should be evaluated closer to neutral
+                    # GAMMA = 0.99
+                    # distance_to_end = len(history) - i
+                    # discounted_z = z * (GAMMA ** distance_to_end)
+                    # target_z = discounted_z
+
+                    target_z = z
+
                     state_tensor = torch.tensor(state.get_state_list(), dtype=torch.float32).unsqueeze(0)
                     # POLICY
                     policy_pred = policy_model(state_tensor)[0]
@@ -397,7 +405,7 @@ if __name__ == "__main__":
                     # VALUE
                     value_pred = value_model(state_tensor)[0]
                     scalar_value = value_pred[0] - value_pred[1]
-                    target_tensor = torch.tensor(z, dtype=torch.float32)
+                    target_tensor = torch.tensor(target_z, dtype=torch.float32)
                     value_loss = (scalar_value - target_tensor) ** 2
                     value_loss_stats.append(value_loss.detach().numpy())
                     policy_loss_stats.append(policy_loss.detach().numpy())
