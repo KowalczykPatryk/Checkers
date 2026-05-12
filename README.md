@@ -144,6 +144,10 @@ MCTS plays games against itself using policy-guided tree search and value evalua
 
 When there is no ValueNetwork.pt and PolicyNetwork.pt files in the models/X/ folder then they are automatically downloaded from the google drive using hardcoded url.
 
+## Training interface:
+
+<img width="1434" height="250" alt="Screenshot from 2026-05-12 11-16-27" src="https://github.com/user-attachments/assets/b8f42bc9-b5b5-4d19-b242-14ca9aaf4c9a" />
+
 ## How to use:
 
 Usage of the engine and all playing algorithms is presented in the main.py file.
