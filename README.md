@@ -118,6 +118,10 @@ exploration (policy prior and visit counts)
  - during self-play Dirichlet noise is added to the root node probabilities to improve opening exploration
  - move selection during training uses temperature parameter τ to control exploration randomness
 
+## Diagram:
+
+![Diagram](ai/diagrams/checkers.drawio.png)
+
 ## Training process of Value Network and Policy Network 2.0:
 
 MCTS plays games against itself using policy-guided tree search and value evaluation.
