@@ -34,7 +34,7 @@ if __name__ == "__main__":
     policy_model = PolicyNetwork(5, len(moves_space))
     value_model = ValueNetwork(5)
 
-    # uncomment to load 1.0 models 
+    # uncomment to load 1.0 models
     # # retrieving 1.0 policy network
     # POLICY_MODEL_URL = "https://drive.google.com/file/d/1RSN43tz27N9WY8mZAJqioTh2WA1fbslM/view?usp=sharing"
     # BASE_DIR = Path(__file__).resolve().parent
@@ -56,8 +56,9 @@ if __name__ == "__main__":
     # checkpoint = torch.load(VALUE_PATH / VALUE_MODEL_NAME)
     # value_model.load_state_dict(checkpoint["model"])
 
+    # uncomment to load 2.0 models
     # retrieving 2.0 policy network
-    POLICY_MODEL_URL = ""
+    POLICY_MODEL_URL = "https://drive.google.com/file/d/1BHl0o2WcBZ_NWZf2LHr0ZAmzTzUoENRP/view?usp=sharing"
     BASE_DIR = Path(__file__).resolve().parent
     POLICY_PATH = BASE_DIR / "models" / "2.0"
     POLICY_PATH.mkdir(parents=True, exist_ok=True)
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     policy_model.load_state_dict(checkpoint["model"])
 
     # retrieving 2.0 value network
-    VALUE_MODEL_URL = ""
+    VALUE_MODEL_URL = "https://drive.google.com/file/d/1_d-Ra5BSBj5PXtlrqyB_Bqlexv1gPCRm/view?usp=sharing"
     VALUE_PATH = BASE_DIR / "models" / "2.0"
     VALUE_PATH.mkdir(parents=True, exist_ok=True)
     VALUE_MODEL_NAME = "ValueNetwork.pt"

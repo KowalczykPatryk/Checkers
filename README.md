@@ -140,9 +140,34 @@ MCTS plays games against itself using policy-guided tree search and value evalua
 
 ![Win Rate Graph](ai/plots/2.0/win_rate0-100.png)
 
+## Training process of Value Network and Policy Network 2.1:
+
+Early-game positions are evaluated closer to neutral.
+
+## Training Graphs Version 2.1 Models:
+
+### Policy Network:
+
+#### 0-100 EPOCHS:
+
+![Policy Network Training Graph](ai/plots/2.1/policy_average_loss.png)
+
+### Value Network:
+
+#### 0-100 EPOCH:
+
+![Value Network Training Graph](ai/plots/2.1/value_average_loss.png)
+
+#### Win Rate Against Classic MCTS Given Same Amount of Time To Move
+
+![Win Rate Graph](ai/plots/2.1/win_rate.png)
+
 ## Pre-trained models:
 
 When there is no ValueNetwork.pt and PolicyNetwork.pt files in the models/X/ folder then they are automatically downloaded from the google drive using hardcoded url.
+
+## Parallelizing self-play:
+Self-play matches are played in parallel to speed up generating training data using pytorch multiprocessing.
 
 ## Training interface:
 

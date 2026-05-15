@@ -68,9 +68,12 @@ Loss function used in the AlphaZero:
     - c - hiperparameter
 
 """
+from queue import Empty
+import torch.multiprocessing as mp
 from pathlib import Path
 import numpy as np
 import torch
+import copy
 from copy import deepcopy
 from tqdm import tqdm
 from ai.ai.test import test
@@ -80,6 +83,7 @@ from ai.ai.value_network import ValueNetwork
 from ai.ai.plot import Plot
 from ai.ai.neural_mcts import MCTSNodeNN1, MCTSNodeNN2
 from ai.ai.download import download_model
+from ai.ai.workers import self_play_worker
 
 
 if __name__ == "__main__":
@@ -246,10 +250,9 @@ if __name__ == "__main__":
             policy_loss_plot.save(str(PLOT_DIR / "policy_average_loss.png"))
             win_rate_plot.save(str(PLOT_DIR / "win_rate.png"))
 
-    elif TYPE == 2:
+    elif TYPE == 2: # -----------------------------------------------------------------------------------------------------------------------------------------
         LEARNING_RATE = 0.0001
         N_EPOCHS = 100
-        N_SIMULATIONS = 100
         N_EPOCH_TEST = 25
 
         value_loss_plot = Plot("Average Value Network Loss per Episode", "Episode", "Average Loss")
@@ -266,16 +269,17 @@ if __name__ == "__main__":
 
 
         BASE_DIR = Path(__file__).resolve().parent
-        POLICY_PATH = BASE_DIR.parent / "models" / "2.0"
+        POLICY_PATH = BASE_DIR.parent / "models" / "2.1"
         POLICY_PATH.mkdir(parents=True, exist_ok=True)
         POLICY_MODEL_NAME = "PolicyNetwork.pt"
-        VALUE_PATH = BASE_DIR.parent / "models" / "2.0"
+        VALUE_PATH = BASE_DIR.parent / "models" / "2.1"
         VALUE_PATH.mkdir(parents=True, exist_ok=True)
         VALUE_MODEL_NAME = "ValueNetwork.pt"
 
         #uncomment when continue learning pre-trained models
         # retrieving policy network
-        POLICY_MODEL_URL = ""
+        # POLICY_MODEL_URL = "https://drive.google.com/file/d/1BHl0o2WcBZ_NWZf2LHr0ZAmzTzUoENRP/view?usp=sharing" # 2.0
+        POLICY_MODEL_URL = "https://drive.google.com/file/d/17YeKaLuj_j3I8kx41n3CWCHxOB5InDsO/view?usp=sharing" # 2.1
         if not (POLICY_PATH / POLICY_MODEL_NAME).exists():
             download_model(POLICY_MODEL_URL, str(POLICY_PATH / POLICY_MODEL_NAME))
         checkpoint = torch.load(POLICY_PATH / POLICY_MODEL_NAME)
@@ -283,7 +287,8 @@ if __name__ == "__main__":
         policy_optimizer.load_state_dict(checkpoint["optimizer"])
 
         # retrieving value network
-        VALUE_MODEL_URL = ""
+        # VALUE_MODEL_URL = "https://drive.google.com/file/d/1_d-Ra5BSBj5PXtlrqyB_Bqlexv1gPCRm/view?usp=sharing" # 2.0
+        VALUE_MODEL_URL = "https://drive.google.com/file/d/1spqhvWi8pIQ2xYO_5CBGPE11p94EYBcI/view?usp=sharing" # 2.1
         if not (VALUE_PATH / VALUE_MODEL_NAME).exists():
             download_model(VALUE_MODEL_URL, str(VALUE_PATH / VALUE_MODEL_NAME))
         checkpoint = torch.load(VALUE_PATH / VALUE_MODEL_NAME)
@@ -292,124 +297,78 @@ if __name__ == "__main__":
 
         try:
             for epoch in tqdm(range(N_EPOCHS), desc="Training"):
-                game = Game()
-                history = []
-                move_count = 0
-                while game.is_in_progress():
-                    move_count += 1
-                    root = MCTSNodeNN2(game, policy_model, value_model)
-                    # initial expansion with dirichlet noise
-                    root.expand(dirichlet=True)
-                    tqdm.write("\033[H\033[J", end="")
-                    tqdm.write("Self-play mode active: model is playing against itself (Ctrl+C to interrupt training).")
-                    tqdm.write(game.board.to_string("SELF-PLAY", "SELF-PLAY"))
-                    tqdm.write(f"Move: {move_count}")
-                    # simulations
-                    for _ in range(N_SIMULATIONS):
-                        node = root
-                        # selection
-                        while node.children and not node.is_terminal():
-                            node = node.best_child()
-                        # evaluation / expansion
-                        if node.is_terminal():
-                            value = node.evaluate()
-                        else:
-                            node.expand()
-                            # choose one newly expanded child
-                            node = node.best_child()
-                            value = node.evaluate()
+                # parallel self-play
+                policy_state_clean = copy.deepcopy({k: v.cpu() for k, v in policy_model.state_dict().items()})
+                value_state_clean = copy.deepcopy({k: v.cpu() for k, v in value_model.state_dict().items()})
+                ctx = mp.get_context('spawn')
+                min_n_workers = 4
+                n_workers = min(min_n_workers, ctx.cpu_count()-1)
+                with ctx.Manager() as manager:
+                    display_queue = manager.Queue()
+                    # to the Pool is passed number of new processes
+                    with ctx.Pool(n_workers) as pool:
+                        # map_async is not stoping code execution
+                        result_async = pool.map_async(
+                            self_play_worker,
+                            # each tuple in the list is passed as a task to the worker process
+                            [(Game(), policy_state_clean, value_state_clean, False, display_queue) for _ in range(n_workers-1)] + [(Game(), policy_state_clean, value_state_clean, True, display_queue)]
+                        )
+                        while not result_async.ready():
+                            try:
+                                data = display_queue.get(timeout=1)
 
-                        # backpropagation
-                        node.backpropagate(value)
+                                tqdm.write("\033[H\033[J", end="")
+                                tqdm.write(data["title"])
+                                tqdm.write(data["board"])
+                                tqdm.write(data["move"])
 
-                    moves_space = game.possible_moves_space()
-                    # building pi from visit counts
-                    visits = np.zeros(len(moves_space), dtype=np.float64)
+                            except Empty:
+                                pass
 
-                    for child in root.children:
-                        for i, (start, end) in enumerate(moves_space):
-                            moves = game.moves_from(start, end)
+                        # final flush
+                        try:
+                            while True:
+                                data = display_queue.get_nowait()
 
-                            if moves and child.action == moves[0]:
-                                visits[i] = child.visits
-                                break
-
-                    # temperature schedule
-                    if move_count < 50:
-                        tau = max(0.15, 1.0 * (0.98 ** move_count))
-                    elif move_count < 70:
-                        tau = 0.1
-                    else:
-                        tau = 0.0
-
-                    # apply temperature safely against big exponentials
-                    if tau <= 0.05:
-                        pi = np.zeros_like(visits)
-                        best_idx = np.argmax(visits)
-                        pi[best_idx] = 1.0
-
-                    else:
-                        visits = visits ** (1.0 / tau)
-                        total = visits.sum()
-
-                        if total == 0 or np.isnan(total) or np.isinf(total):
-
-                            mask = np.array(game.possible_moves_mask(),dtype=np.float32)
-                            pi = mask / mask.sum()
-
-                        else:
-                            pi = visits / total
-
-                    history.append((deepcopy(game), pi))
-
-                    # sample move from pi
-                    action_idx = np.random.choice(np.arange(len(moves_space)), p=pi)
-
-                    start_end = moves_space[action_idx]
-                    moves = game.moves_from(start_end[0], start_end[1])
-                    move = moves[0]
-                    game.make_move(move)
-
-                tqdm.write("\033[H\033[J", end="")
-                # final game result
-                outcome = game.final_outcome()
-
-                if outcome == Outcome.LIGHT:
-                    z = 1.0
-                elif outcome == Outcome.DARK:
-                    z = -1.0
-                else:
-                    z = 0.0
+                                tqdm.write("\033[H\033[J", end="")
+                                tqdm.write(data["title"])
+                                tqdm.write(data["board"])
+                                tqdm.write(data["move"])
+                        except Empty:
+                            pass
+                        tqdm.write("\033[H\033[J", end="")
+                        histories = result_async.get()
 
                 total_loss = 0.0
                 value_loss_stats = []
                 policy_loss_stats = []
-                for i, (state, pi_target) in enumerate(history):
-                    # # early-game positions should be evaluated closer to neutral
-                    # GAMMA = 0.99
-                    # distance_to_end = len(history) - i
-                    # discounted_z = z * (GAMMA ** distance_to_end)
-                    # target_z = discounted_z
+                for (history, z) in histories:
+                    for i, (state_list, mask, pi_target) in enumerate(history):
+                        # # early-game positions should be evaluated closer to neutral
+                        GAMMA = 0.99
+                        distance_to_end = len(history) - i
+                        discounted_z = z * (GAMMA ** distance_to_end)
+                        target_z = discounted_z
 
-                    target_z = z
+                        # target_z = z
 
-                    state_tensor = torch.tensor(state.get_state_list(), dtype=torch.float32).unsqueeze(0)
-                    # POLICY
-                    policy_pred = policy_model(state_tensor)[0]
-                    mask = torch.tensor(state.possible_moves_mask(), dtype=torch.float32)
-                    policy_pred = policy_pred * mask
-                    policy_pred = policy_pred / (policy_pred.sum() + 1e-8)
-                    pi_target = torch.tensor(pi_target, dtype=torch.float32)
-                    log_probs = torch.log(policy_pred + 1e-8)
-                    policy_loss = -torch.sum(pi_target * log_probs)
-                    # VALUE
-                    value_pred = value_model(state_tensor)[0]
-                    scalar_value = value_pred[0] - value_pred[1]
-                    target_tensor = torch.tensor(target_z, dtype=torch.float32)
-                    value_loss = (scalar_value - target_tensor) ** 2
-                    value_loss_stats.append(value_loss.detach().numpy())
-                    policy_loss_stats.append(policy_loss.detach().numpy())
-                    total_loss += policy_loss + value_loss
+                        state_tensor = torch.tensor(state_list, dtype=torch.float32).unsqueeze(0)
+                        # POLICY
+                        policy_pred = policy_model(state_tensor)[0]
+                        mask = torch.tensor(mask, dtype=torch.float32)
+                        policy_pred = policy_pred * mask
+                        policy_pred = policy_pred / (policy_pred.sum() + 1e-8)
+                        pi_target = torch.tensor(pi_target, dtype=torch.float32)
+                        log_probs = torch.log(policy_pred + 1e-8)
+                        policy_loss = -torch.sum(pi_target * log_probs)
+                        # VALUE
+                        value_pred = value_model(state_tensor)[0]
+                        scalar_value = value_pred[0] - value_pred[1]
+                        target_tensor = torch.tensor(target_z, dtype=torch.float32)
+                        value_loss = (scalar_value - target_tensor) ** 2
+                        value_loss_stats.append(value_loss.detach().numpy())
+                        policy_loss_stats.append(policy_loss.detach().numpy())
+                        total_loss += policy_loss + value_loss
 
                 policy_optimizer.zero_grad()
                 value_optimizer.zero_grad()
@@ -420,20 +379,7 @@ if __name__ == "__main__":
                 value_loss_plot.update(sum(value_loss_stats) / len(value_loss_stats))
                 policy_loss_plot.update(sum(policy_loss_stats) / len(policy_loss_stats))
 
-                # Model created using pytorch has learnable parameters (weights and biases)
-                # which are instances of torch.nn.parameter.Parameter which is Tensor subclass
-                # During forward pass computational graph is build where every operation creates
-                # node in this graph and each node stores the operation performed and reference to the
-                # previous tensors.
-                # Calling .backward() triggers reverse-mode automatic differentiation (backpropagation)
-                # which computes partial derivatives for each node using the chain rule through the graph.
-                # Gradients are accumulated into .grad fields of leaf
-                # tensors (leaf tensors are input tensors).
-                # The grad is the gradient of the loss with respect to the tensor we are probing.
-                # Before running backward(), this attribute is set to None.
-                # Optimizer has reference to the leaf tensors because they were passed to its constructor.
-
-                if epoch % N_EPOCH_TEST == 0:
+                if epoch % N_EPOCH_TEST == 0 and epoch != 0:
                     print("Starting Test")
                     win_rate_plot.update(test(policy_model, value_model)) # it heavily extends learning time
         finally:
@@ -449,4 +395,3 @@ if __name__ == "__main__":
             value_loss_plot.save(str(PLOT_DIR / "value_average_loss.png"))
             policy_loss_plot.save(str(PLOT_DIR / "policy_average_loss.png"))
             win_rate_plot.save(str(PLOT_DIR / "win_rate.png"))
-            
